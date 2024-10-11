@@ -3,7 +3,7 @@ name: Deploy to EC2
 on:
   push:
     branches:
-      - main  # Adjust as needed
+      - main  # Change this to your branch name if needed
 
 jobs:
   deploy:
@@ -14,20 +14,16 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Set up SSH
-        uses: webfactory/ssh-agent@v0.5.3
+        uses: appleboy/ssh-action@master
         with:
-          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
-
-      - name: Deploy project via rsync
-        uses: easingthemes/ssh-deploy@main
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
-          REMOTE_HOST: ${{ secrets.HOST_DNS }}
-          REMOTE_USER: ${{ secrets.USERNAME }}
-          TARGET: /var/www/html
-        with:
-          args: "-rltgoDzv --rsync-path='sudo rsync' --exclude '.git/' --exclude '.github/' --delete"
-
-      - name: Fix permissions on EC2
-        run: |
-          ssh -i ${{ secrets.EC2_SSH_KEY }} ${{ secrets.USERNAME }}@${{ secrets.HOST_DNS }} "sudo chown -R www-data:www-data /var/www/html && sudo chmod -R 755 /var/www/html"
+          host: ${{ secrets.HOST_DNS }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo "Step 1: Creating the 'resume' directory in /var/www/html."
+            sudo mkdir -p /var/www/html/resume
+            
+            echo "Step 2: Copying files to the 'resume' directory."
+            # Copy files from your project's directory to /var/www/html/resume
+            sudo cp -r /home/ubuntu/your_project_directory/* /var/www/html/resume/
+            echo "Step 3: Files copied to /var/www/html/resume."
