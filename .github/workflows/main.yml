@@ -1,6 +1,5 @@
 name: Push-to-EC2
 
-# Trigger deployment only on push to main branch
 on:
   push:
     branches:
@@ -8,12 +7,21 @@ on:
 
 jobs:
   deploy:
-    name: Deploy to EC2 on master branch push
+    name: Deploy to EC2 on main branch push
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout the files
         uses: actions/checkout@v2
+
+      - name: Debugging Checkout
+        run: echo "Step 1: Files have been checked out."
+
+      - name: Debugging secrets
+        run: |
+          echo "Step 2: Verifying secrets..."
+          echo "HOST: ${{ secrets.HOST_DNS }}"
+          echo "TARGET: /var/www/html"
 
       - name: Deploy to Server 1
         uses: easingthemes/ssh-deploy@main
@@ -21,7 +29,12 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
           REMOTE_HOST: ${{ secrets.HOST_DNS }}
           REMOTE_USER: ${{ secrets.USERNAME }}
-          TARGET: ${{ secrets.TARGET_DIR }}
+          TARGET: /var/www/html
+        with:
+          args: "-rltgoDzv --exclude '.git/' --delete" # Add rsync options explicitly
+          
+      - name: Debugging Rsync
+        run: echo "Step 3: Rsync deployment to the target directory /var/www/html completed."
 
       - name: Executing remote ssh commands using ssh key
         uses: appleboy/ssh-action@master
@@ -30,9 +43,11 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            echo "Step 4: Starting installation of Apache on remote server."
             sudo apt-get -y update
             sudo apt-get install -y apache2
             sudo systemctl start apache2
             sudo systemctl enable apache2
-            cd home
-            sudo mv * /var/www/html
+            echo "Step 5: Apache installation completed."
+            sudo mv /home/ubuntu/* /var/www/html/
+            echo "Step 6: Files moved to /var/www/html."
