@@ -1,53 +1,37 @@
-name: Push-to-EC2
+name: Deploy to EC2
 
 on:
   push:
     branches:
-      - main
+      - main  # Change to your main branch if necessary
 
 jobs:
   deploy:
-    name: Deploy to EC2 on main branch push
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout the files
+      # Step 1: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Debugging Checkout
-        run: echo "Step 1: Files have been checked out."
+      # Step 2: Set up SSH key for accessing the EC2 server
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.EC2_SSH_KEY }}  # Add your private key as a secret
 
-      - name: Debugging secrets
-        run: |
-          echo "Step 2: Verifying secrets..."
-          echo "HOST: ${{ secrets.HOST_DNS }}"
-          echo "TARGET: /var/www/html"
-
-      - name: Deploy to Server 1
+      # Step 3: Rsync the project files to the server
+      - name: Deploy project via rsync
         uses: easingthemes/ssh-deploy@main
         env:
-          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
-          REMOTE_HOST: ${{ secrets.HOST_DNS }}
-          REMOTE_USER: ${{ secrets.USERNAME }}
-          TARGET: /var/www/html
+          SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}  # The SSH private key for connecting to EC2
+          REMOTE_HOST: ${{ secrets.HOST_DNS }}          # The IP address or DNS of the EC2 instance
+          REMOTE_USER: ${{ secrets.USERNAME }}          # The user to SSH with (e.g., ubuntu)
+          TARGET: /var/www/html                         # Path where the files will be deployed on EC2
         with:
-          args: "-rltgoDzv --exclude '.git/' --delete" # Add rsync options explicitly
-          
-      - name: Debugging Rsync
-        run: echo "Step 3: Rsync deployment to the target directory /var/www/html completed."
+          args: "-rltgoDzv --rsync-path='sudo rsync' --exclude '.git/' --exclude '.github/' --delete"
 
-      - name: Executing remote ssh commands using ssh key
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ secrets.HOST_DNS }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            echo "Step 4: Starting installation of Apache on remote server."
-            sudo apt-get -y update
-            sudo apt-get install -y apache2
-            sudo systemctl start apache2
-            sudo systemctl enable apache2
-            echo "Step 5: Apache installation completed."
-            sudo mv /home/ubuntu/* /var/www/html/
-            echo "Step 6: Files moved to /var/www/html."
+      # Step 4: Ensure proper file permissions (optional)
+      - name: Fix permissions on EC2
+        run: |
+          ssh -i ${{ secrets.EC2_SSH_KEY }} ${{ secrets.USERNAME }}@${{ secrets.HOST_DNS }} "sudo chown -R www-data:www-data /var/www/html && sudo chmod -R 755 /var/www/html"
