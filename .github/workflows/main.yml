@@ -34,7 +34,7 @@ jobs:
           host: ${{ secrets.HOST_DNS }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "./"  # This points to the root of the repository in the GitHub Actions workspace
+          source: "./"
           target: "/var/www/html/resume/"
           overwrite: true  # This will overwrite existing files with updated ones
-
+          rm: true  # This will remove files on the server that are not in your repo
