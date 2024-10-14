@@ -13,17 +13,28 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Set up SSH
+      - name: Set up SSH and check/create the folder
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.HOST_DNS }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            echo "Step 1: Creating the 'resume' directory in /var/www/html."
-            sudo mkdir -p /var/www/html/resume
-            
-            echo "Step 2: Copying files to the 'resume' directory."
-            # Copy files from your project's directory to /var/www/html/resume
-            sudo cp -r /home/ubuntu/your_project_directory/* /var/www/html/resume/
-            echo "Step 3: Files copied to /var/www/html/resume."
+            echo "Step 1: Checking if the 'resume' directory exists."
+            if [ ! -d /var/www/html/resume ]; then
+              echo "Directory 'resume' does not exist. Creating it now."
+              sudo mkdir -p /var/www/html/resume
+            else
+              echo "Directory 'resume' already exists."
+            fi
+
+      - name: Copy files from GitHub Actions workspace to EC2
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.HOST_DNS }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "./"  # This points to the root of the repository in the GitHub Actions workspace
+          target: "/var/www/html/resume/"
+          overwrite: true  # This will overwrite existing files with updated ones
+
